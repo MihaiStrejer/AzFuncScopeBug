@@ -45,6 +45,9 @@ namespace AzFuncScopeBug
             // Add services
             services.AddTransient<ITestService, TestService>();
             services.AddTransient<IRequestHandler<MedRequest, Unit>, MedRequestHandler>();
+
+            // Stateful scoped service
+            services.AddScoped<MyStateService>();
         }
     }
 
@@ -57,17 +60,19 @@ namespace AzFuncScopeBug
     {
         private readonly IServiceProvider _provider;
         private readonly IMediator _mediator;
+        private readonly MyStateService _state;
 
-        public TestService(IMediator mediator, IServiceProvider provider)
+        public TestService(IMediator mediator, IServiceProvider provider, MyStateService state)
         {
             _mediator = mediator;
             _provider = provider;
+            _state = state;
         }
 
         public async Task Do()
         {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"[Service] Provider: {_provider.GetHashCode()}");
+            Console.ForegroundColor = ConsoleColor.DarkCyan;
+            Console.WriteLine($"{"[TestService] Provider:",-42}  {_provider.GetHashCode()} with state: {_state.GetHashCode()} -> {_state}");
             Console.ResetColor();
 
             await _mediator.Send(new MedRequest());
@@ -79,18 +84,29 @@ namespace AzFuncScopeBug
     public class MedRequestHandler : RequestHandler<MedRequest>
     {
         private readonly IServiceProvider _provider;
+        private readonly MyStateService _state;
 
-        public MedRequestHandler(IServiceProvider provider)
+        public MedRequestHandler(IServiceProvider provider, MyStateService state)
         {
             _provider = provider;
+            _state = state;
         }
 
         protected override void Handle(MedRequest request)
         {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"[MediatR] Provider: {_provider.GetHashCode()}");
+            Console.ForegroundColor = ConsoleColor.DarkCyan;
+            Console.WriteLine($"{"[MediatR] Provider:",-43} {_provider.GetHashCode()} with state: {_state.GetHashCode()} -> {_state}");
             Console.ResetColor();
         }
+    }
+
+    // Scope stateful service
+    public class MyStateService
+    {
+        public string State { get; set; } = "I should not be here!";
+        public int Count { get; set; }
+
+        public override string ToString() => $"{State} {Count}";
     }
 
     // Test Functions
@@ -101,34 +117,80 @@ namespace AzFuncScopeBug
         public Functions(IServiceProvider serviceProvider)
         {
             _serviceProvider = serviceProvider;
-
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"[Func] Provider: {_serviceProvider.GetHashCode()}");
-            Console.ResetColor();
         }
 
         [FunctionName("Function1")]
         public async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Function, "get", Route = null)] HttpRequest req)
         {
-            await RunTest("Func container", _serviceProvider);
-            await RunTest("DryIoc side container", Program.DryIocSideContainer);
-            await RunTest(".NET container", Program.DefaultDotNetContainer);
+            // Az
+            {
+                await RunTest("FuncScope", _serviceProvider);
+
+                //      Sub scope
+                using var azFuncSubScope = _serviceProvider.CreateScope();
+                await RunTest("FuncSubScope", azFuncSubScope.ServiceProvider);
+
+                CheckScope(".NET", _serviceProvider);
+            }
+
+            // DryIoc
+            {
+                using var dryIocScope = Program.DryIocSideContainer.CreateScope();
+                await RunTest("DryIoc", dryIocScope.ServiceProvider);
+
+                //      Sub scope
+                using var subDryIocScope = dryIocScope.ServiceProvider.CreateScope();
+                await RunTest("DryIocSubScope", subDryIocScope.ServiceProvider);
+
+                CheckScope("DryIoc", dryIocScope.ServiceProvider);
+            }
+
+            // Dot Net
+            {
+                using var defaultDotNetScope = Program.DefaultDotNetContainer.CreateScope();
+                await RunTest(".NET", defaultDotNetScope.ServiceProvider);
+
+                //      Sub scope
+                using var subDefaultDotNetScope = defaultDotNetScope.ServiceProvider.CreateScope();
+                await RunTest(".NETSubScope", subDefaultDotNetScope.ServiceProvider);
+
+                CheckScope(".NET", defaultDotNetScope.ServiceProvider);
+            }
 
             return new OkResult();
         }
 
         private static async Task RunTest(string testName, IServiceProvider provider)
         {
-            using (var scope = provider.CreateScope())
-            {
-                var scopeProvider = scope.ServiceProvider;
-                
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"---  {testName} - scoped provider: {scopeProvider.GetHashCode()} ---");
-                Console.ResetColor();
+            //var scopeProvider = provider;
 
-                var testService = scopeProvider.GetService<ITestService>();
-                await testService.Do();
+            // Create a scoped state and set some data
+            var state = provider.GetService<MyStateService>();
+            state.State = testName;
+            state.Count++;
+
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine($"---  {testName,-28} provider: {provider.GetHashCode()} with state: {state.GetHashCode()} ---");
+            Console.ResetColor();
+
+            var testService = provider.GetService<ITestService>();
+            await testService.Do();
+        }
+
+        private static void CheckScope(string expectedScope, IServiceProvider provider)
+        {
+            var state = provider.GetService<MyStateService>();
+            if (expectedScope.Equals(state.State))
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"Final state check Ok, scope state: {state}");
+                Console.ResetColor();
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"Final state check FAILED, scope state: {state}");
+                Console.ResetColor();
             }
         }
     }

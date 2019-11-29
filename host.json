@@ -1,0 +1,11 @@
+{
+  "version": "2.0",
+  "logging": {
+    "logLevel": {
+      "default": "Error",
+      "Host.Results": "Error",
+      "Function": "Error",
+      "Function.Function1": "Error"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29424.173
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzFuncScopeBug", "AzFuncScopeBug.csproj", "{BA934DE2-5D98-4E56-98F6-6CB520631C5D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BA934DE2-5D98-4E56-98F6-6CB520631C5D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BA934DE2-5D98-4E56-98F6-6CB520631C5D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BA934DE2-5D98-4E56-98F6-6CB520631C5D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BA934DE2-5D98-4E56-98F6-6CB520631C5D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {2A829174-216B-4F61-B425-C6EC81F22B2A}
+	EndGlobalSection
+EndGlobal

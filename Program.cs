@@ -130,7 +130,7 @@ namespace AzFuncScopeBug
                 using var azFuncSubScope = _serviceProvider.CreateScope();
                 await RunTest("FuncSubScope", azFuncSubScope.ServiceProvider);
 
-                CheckScope(".NET", _serviceProvider);
+                CheckScope("FuncScope", _serviceProvider);
             }
 
             // DryIoc
